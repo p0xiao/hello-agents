@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -6,16 +7,20 @@ AGENT_SYSTEM_PROMPT = """
 你是一个智能旅行助手。你的任务是分析用户的请求，并使用可用工具一步步地解决问题。
 
 # 可用工具:
-- `get_weather(city: str)`: 查询指定城市的实时天气。
-- `get_attraction(city: str, weather: str)`: 根据城市和天气搜索推荐的旅游景点。
+- `get_weather(city: str)`: 查询指定城市的实时天气。示例：`get_weather(city="北京")`
+- `get_attraction(city: str, weather: str)`: 根据城市和天气搜索推荐的旅游景点。示例：`get_attraction(city="北京", weather="Cloudy")`
 
 # 行动格式:
 你的回答必须严格遵循以下格式。首先是你的思考过程，然后是你要执行的具体行动，每次回复只输出一对Thought-Action：
 Thought: [这里是你的思考过程和下一步计划]
 Action: [这里是你要调用的工具，格式为 function_name(arg_name="arg_value")]
 
+# 重要提示:
+- 所有字符串类型的参数值必须用双引号括起来，例如：city="北京"，weather="Cloudy"
+- 天气描述是字符串，也需要加引号
+
 # 任务完成:
-当你收集到足够的信息，能够回答用户的最终问题时，你必须在`Action:`字段后使用 `finish(answer="...")` 来输出最终答案。
+当你收集到足够的信息，能够回答用户的最终问题时，你必须在`Action:`字段后使用 `finish(answer="...")` 来输出最终答案。示例：`Action: finish(answer="xxx")`
 
 请开始吧！
 """
@@ -150,6 +155,10 @@ llm = OpenAICompatibleClient(
     base_url=BASE_URL
 )
 
+from Qwen import Qwen
+
+qwen = Qwen()
+
 # --- 2. 初始化 ---
 user_prompt = "你好，请帮我查询一下今天北京的天气，然后根据天气推荐一个合适的旅游景点。"
 prompt_history = [f"用户请求: {user_prompt}"]
@@ -164,8 +173,9 @@ for i in range(5): # 设置最大循环次数
     full_prompt = "\n".join(prompt_history)
     
     # 3.2. 调用LLM进行思考
-    llm_output = llm.generate(full_prompt, system_prompt=AGENT_SYSTEM_PROMPT)
-    
+    # llm_output = llm.generate(full_prompt, system_prompt=AGENT_SYSTEM_PROMPT)
+    llm_output = qwen.generate(full_prompt, system_prompt=AGENT_SYSTEM_PROMPT)
+
     # 模型可能会输出多余的Thought-Action，需要截断
     match = re.search(r'(Thought:.*?Action:.*?)(?=\n\s*(?:Thought:|Action:|Observation:)|\Z)', llm_output, re.DOTALL)
     if match:
@@ -190,7 +200,15 @@ for i in range(5): # 设置最大循环次数
     
     tool_name = re.search(r"(\w+)\(", action_str).group(1)
     args_str = re.search(r"\((.*)\)", action_str).group(1)
-    kwargs = dict(re.findall(r'(\w+)="([^"]*)"', args_str))
+    # 支持带引号和不带引号的参数值
+    def parse_args(args_str):
+        kwargs = {}
+        for match in re.finditer(r'(\w+)=(?:"([^"]*)"|(\w+))', args_str):
+            key = match.group(1)
+            value = match.group(2) or match.group(3)  # 优先使用带引号的值
+            kwargs[key] = value
+        return kwargs
+    kwargs = parse_args(args_str)
 
     if tool_name in available_tools:
         observation = available_tools[tool_name](**kwargs)
