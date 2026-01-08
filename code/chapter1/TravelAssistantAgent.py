@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+import sys
+
+# 设置控制台编码为 UTF-8，解决 Windows 中文乱码问题
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -182,7 +189,6 @@ for i in range(5): # 设置最大循环次数
         truncated = match.group(1).strip()
         if truncated != llm_output.strip():
             llm_output = truncated
-            print("已截断多余的 Thought-Action 对")
     print(f"模型输出:\n{llm_output}\n")
     prompt_history.append(llm_output)
     
@@ -190,6 +196,7 @@ for i in range(5): # 设置最大循环次数
     action_match = re.search(r"Action: (.*)", llm_output, re.DOTALL)
     if not action_match:
         print("解析错误：模型输出中未找到 Action。")
+        print(f"模型输出:\n{llm_output[:500]}...")
         break
     action_str = action_match.group(1).strip()
 

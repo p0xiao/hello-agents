@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -6,7 +7,10 @@ class Qwen:
         self.model_id = model_id
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
-        self.model = AutoModelForCausalLM.from_pretrained(model_id).to(self.device)
+        # 确保pad_token设置正确
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.model = AutoModelForCausalLM.from_pretrained(model_id, device_map=self.device, dtype=torch.bfloat16)
         print("模型和分词器加载完成！")
 
     def generate(self, prompt: str, system_prompt: str) -> str:
@@ -24,13 +28,20 @@ class Qwen:
         )
 
         # 编码输入文本
-        model_inputs = self.tokenizer([text], return_tensors="pt").to(self.device)
+        model_inputs = self.tokenizer([text], return_tensors="pt", padding=True, return_attention_mask=True).to(self.device)
 
         # 使用模型生成回答
-        # max_new_tokens 控制了模型最多能生成多少个新的Token
         generated_ids = self.model.generate(
             model_inputs.input_ids,
-            max_new_tokens=512
+            attention_mask=model_inputs.attention_mask,
+            max_new_tokens=512,
+            do_sample=False,          # 禁用采样以减少随机性
+            pad_token_id=self.tokenizer.pad_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,   
+            repetition_penalty=1.2,   # 惩罚重复token
+            temperature=None,
+            top_p=None,
+            top_k=None
         )
 
         # 将生成的 Token ID 截取掉输入部分
