@@ -163,3 +163,14 @@ cython_debug/
 
 # 忽略各种文件夹下codex AGENRS.md
 AGENTS.md
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
