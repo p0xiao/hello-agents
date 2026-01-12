@@ -156,15 +156,19 @@ API_KEY = os.environ.get("API_KEY")
 BASE_URL = os.environ.get("BASE_URL")
 MODEL_ID = os.environ.get("MODEL_ID")
 
-llm = OpenAICompatibleClient(
-    model=MODEL_ID,
-    api_key=API_KEY,
-    base_url=BASE_URL
-)
+# llm = OpenAICompatibleClient(
+#     model=MODEL_ID,
+#     api_key=API_KEY,
+#     base_url=BASE_URL
+# )
 
-from Qwen import Qwen
+# from Qwen import Qwen
+# qwen = Qwen()
 
-qwen = Qwen()
+from google import genai
+from google.genai import types
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+google_client = genai.Client(api_key=GOOGLE_API_KEY)
 
 # --- 2. 初始化 ---
 user_prompt = "你好，请帮我查询一下今天北京的天气，然后根据天气推荐一个合适的旅游景点。"
@@ -181,7 +185,16 @@ for i in range(5): # 设置最大循环次数
     
     # 3.2. 调用LLM进行思考
     # llm_output = llm.generate(full_prompt, system_prompt=AGENT_SYSTEM_PROMPT)
-    llm_output = qwen.generate(full_prompt, system_prompt=AGENT_SYSTEM_PROMPT)
+    # llm_output = qwen.generate(full_prompt, system_prompt=AGENT_SYSTEM_PROMPT)
+
+    response = google_client.models.generate_content(
+        model='gemini-3-flash-preview',
+        contents=full_prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=AGENT_SYSTEM_PROMPT,
+        )
+    )
+    llm_output = response.text
 
     # 模型可能会输出多余的Thought-Action，需要截断
     match = re.search(r'(Thought:.*?Action:.*?)(?=\n\s*(?:Thought:|Action:|Observation:)|\Z)', llm_output, re.DOTALL)
