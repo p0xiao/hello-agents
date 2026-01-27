@@ -1,0 +1,19 @@
+[project]
+name = "hello-agents"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dotenv>=0.9.9",
+    "langgraph>=1.0.6",
+    "mss>=10.1.0",
+    "openai>=2.15.0",
+    "pyautogui>=0.9.54",
+    "requests>=2.32.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
